@@ -2,8 +2,6 @@
 
 A Python CLI tool that fetches the **last 8 weeks** of Google Ads campaign performance data and displays it as formatted tables in the terminal — one table per week, with the highest values highlighted in green.
 
-If the Google Ads API is unavailable (e.g. missing credentials, network error), the program automatically falls back to mock data so you can still see the report layout.
-
 ---
 
 ## What it does
