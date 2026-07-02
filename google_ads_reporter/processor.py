@@ -18,7 +18,7 @@ def process(raw_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
     Returns:
         Cleaned list of dicts with keys: campaign_name, impressions, clicks,
-        cost, ctr, cpc, conversions.
+        cost, ctr, cpc, conversions, week_start, week_end.
     """
     processed: list[dict[str, Any]] = []
 
@@ -48,6 +48,8 @@ def process(raw_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "ctr": ctr,
                 "cpc": cpc,
                 "conversions": row["conversions"],
+                "week_start": row.get("week_start", ""),
+                "week_end": row.get("week_end", ""),
             }
         )
 

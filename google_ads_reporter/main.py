@@ -2,40 +2,15 @@
 
 import argparse
 import sys
+from rich.console import Console
 
 from google.ads.googleads.client import GoogleAdsClient
 
 from config import load_config
 from fetcher import get_campaign_stats
+from mock_data import DRY_RUN_WEEKLY_DATA
 from processor import process
 from reporter import print_report, print_error
-
-DRY_RUN_DATA = [
-    {
-        "campaign_id": "1",
-        "campaign_name": "Brand",
-        "impressions": 10000,
-        "clicks": 420,
-        "cost_micros": 50000000,
-        "conversions": 18,
-    },
-    {
-        "campaign_id": "2",
-        "campaign_name": "Competitor",
-        "impressions": 8000,
-        "clicks": 200,
-        "cost_micros": 30000000,
-        "conversions": 5,
-    },
-    {
-        "campaign_id": "3",
-        "campaign_name": "Generic",
-        "impressions": 500,
-        "clicks": 0,
-        "cost_micros": 0,
-        "conversions": 0,
-    },
-]
 
 
 def parse_args() -> argparse.Namespace:
@@ -47,7 +22,7 @@ def parse_args() -> argparse.Namespace:
         "--start-date",
         type=str,
         default=None,
-        help="Start date (YYYY-MM-DD). Defaults to 7 days ago.",
+        help="Start date (YYYY-MM-DD). Defaults to 8 weeks ago.",
     )
     parser.add_argument(
         "--end-date",
@@ -69,30 +44,47 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def _build_dry_run_rows(
+    weekly_ranges: list[tuple[str, str]],
+) -> list[dict]:
+    """Build a flat list of dicts tagged with week_start/week_end from data."""
+    rows: list[dict] = []
+    for i, (week_start, week_end) in enumerate(weekly_ranges):
+        for week_row in DRY_RUN_WEEKLY_DATA[i]:
+            row = dict(week_row)
+            row["week_start"] = week_start
+            row["week_end"] = week_end
+            rows.append(row)
+    return rows
+
+
 def main() -> None:
     """Main entry point."""
     args = parse_args()
+    # Obtain all APIs
     config = load_config()
+    console = Console()
 
-    # Override date range from CLI if provided
-    start_date = args.start_date or config["date_range"]["start"]
-    end_date = args.end_date or config["date_range"]["end"]
+    weekly_ranges = config["weekly_date_ranges"]
 
-    # Override accounts from CLI if provided
+    # Override accounts from CLI if provided under --accounts
     if args.accounts:
         customer_ids = [cid.strip() for cid in args.accounts.split(",") if cid.strip()]
     else:
         customer_ids = config["customer_ids"]
 
     # Print header
-    print(f"Weekly Google Ads Report: {start_date} to {end_date}")
-    print("=" * 60)
+    overall_start = weekly_ranges[-1][0] if weekly_ranges else "?"
+    overall_end = weekly_ranges[0][1] if weekly_ranges else "?"
+    console.print(f"Weekly Google Ads Report (8 weeks): {overall_start} to {overall_end}")
+    console.print("=" * 70)
 
+    # Handle dry-run mode (Get mock data)
     if args.dry_run:
-        # Process and display mock data for one account
         account_id = "DRY-RUN-ACCOUNT"
-        rows = process(DRY_RUN_DATA)
-        print_report(account_id, rows, start_date, end_date)
+        raw_rows = _build_dry_run_rows(weekly_ranges)
+        rows = process(raw_rows)
+        print_report(account_id, rows, weekly_ranges)
         return
 
     if not customer_ids:
@@ -106,18 +98,17 @@ def main() -> None:
     try:
         client = GoogleAdsClient.load_from_env()
     except Exception as exc:
-        print_error("N/A", f"Failed to initialise Google Ads client: {exc}")
-        sys.exit(1)
+        print_error("N/A", f"Could not connect to Google Ads API: {exc}")
+        return
 
     # Loop over all customer IDs
     for customer_id in customer_ids:
         try:
-            raw_rows = get_campaign_stats(client, customer_id, start_date, end_date)
+            raw_rows = get_campaign_stats(client, customer_id, weekly_ranges)
             rows = process(raw_rows)
-            print_report(customer_id, rows, start_date, end_date)
+            print_report(customer_id, rows, weekly_ranges)
         except Exception as exc:
-            print_error(customer_id, str(exc))
-            # Continue with the next account
+            print_error(customer_id, f"Could not connect to Google Ads API: {exc}")
 
 
 if __name__ == "__main__":
