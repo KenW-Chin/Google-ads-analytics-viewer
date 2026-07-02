@@ -79,7 +79,7 @@ You'll need the following values (all obtained from your Google Cloud Console an
 ### Quick start — no API required
 
 ```bash
-python main.py --dry-run
+python ./google_ads_reporter/main.py --dry-run
 ```
 
 This uses built-in mock data spanning 8 weeks and shows the full report.
@@ -87,7 +87,7 @@ This uses built-in mock data spanning 8 weeks and shows the full report.
 ### Live report
 
 ```bash
-python main.py
+python ./google_ads_reporter/main.py
 ```
 
 Fetches real data from the Google Ads API for each account in `GOOGLE_ADS_CUSTOMER_IDS`. If the API is not configured or fails, mock data is shown with a clear label.
@@ -95,7 +95,7 @@ Fetches real data from the Google Ads API for each account in `GOOGLE_ADS_CUSTOM
 ### Override accounts on the fly
 
 ```bash
-python main.py --accounts 1234567890,0987654321
+python ./google_ads_reporter/main.py --accounts 1234567890,0987654321
 ```
 
 ---
